@@ -1,5 +1,5 @@
 import { Parametrizador } from "./Parametrizador";
-import { ReglasParametro } from "./ReglasParametro";
+import { ConfigsDeducibles } from "./ConfigsDeducibles"
 
 
 const text1 = `(No Inclueye I.G.V.)
@@ -75,49 +75,10 @@ Para Volcaduras incluyendo Xtrail, Pathfinder, Patrol, rurales y suv: 20%, monto
 Imprudencia culposa 20% del siniestro mínimo S/. 840.00`;
 
 
-
-const response_expected = {
-    "payload": [ 
-       {
-           "deducible": 10,
-           "copago": 150, 
-           "moneda": "USD", 
-           "tipo": "NO TIPO", 
-           "marca": "NO MARCA", 
-           "taller": "NO TALLER" 
-        } 
-    ] 
-}
-
-const deducible = new ReglasParametro('deducible', true, false, '\\d{1,2}([.])?\\d{1,2}%', 'BUSQUEDA', '\\d{1,2}([.])?\\d{1,2}%');
-const copago = new ReglasParametro('copago', true, false, '(usd|us\\$|pen|sol|s\\/\\.)(\\s)?[0-9]{1,3}[.][0-9]{1,2}', 'BUSQUEDA', '[0-9]{1,3}[.][0-9]{1,2}');
-const moneda = new ReglasParametro('moneda', true, false, '(usd|us\\$|pen|sol|s\\/\\.)(\\s)?[0-9]{1,3}[.][0-9]{1,2}', 'BUSQUEDA', 'usd|us\\$|pen|sol|s\\/\\.', [{'patron': 'usd|us\\$', 'valor': 'USD'}, {'patron': 'pen|sol|s\\/\\.', 'valor': 'PEN'}]);
-const taller = new ReglasParametro('taller', false, true, 'talleres(\\s)?([a-z])*(\\s)?(multimarca|concesionario)?', 'ELIMINACION', 'talleres|afiliados|especiales|preferenciales|concesionario|multimarca');
-const tipo = new ReglasParametro('tipo', false, false, 'talleres(\\s)?([a-z])*(\\s)?(multimarca|concesionario)?', 'BUSQUEDA', 'multimarca|concesionario', [{'patron': 'multimarca', 'valor': 'Multimarca'}, {'patron': 'concesionario', 'valor': 'Concesionario'}]);
-const marca = new ReglasParametro('marca', false, false, 'marca(\\s)?(([a-z])+[,]?(\\s)?)*(\\s)?([:])?', 'ELIMINACION', 'marca|[:]');
-
-const reglasParametros = [
-    deducible,
-    copago,
-    moneda,
-    taller,
-    tipo,
-    marca
-]
-
-const parametrizador = new Parametrizador(reglasParametros);
+const parametrizador = new Parametrizador(ConfigsDeducibles);
 
 const textos = [
-    text1,
-    text2,
-    text3,
-    text4,
-    text5,
-    text6,
-    text7,
-    text8,
-    text9,
-    text10
+    text2
 ]
 
 const results: object[] = [];

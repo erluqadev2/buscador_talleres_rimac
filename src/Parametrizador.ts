@@ -1,4 +1,5 @@
-import { ReglasParametro, TranformadorValor } from "./ReglasParametro";
+import { ReglasParametro } from "./ReglasParametro";
+import { TranformadorValor } from "./TransformadorValor";
 
 export class Parametrizador {
 
@@ -16,8 +17,11 @@ export class Parametrizador {
     }
 
     evaluar(texto: string): object[] {
+        console.log('-- evaluar --');
         const lineas = texto.split('\n');
+        console.log(lineas);
         let lineasConParametros = this.filtrarTextosCumplenReglasObligatorias(lineas);
+        console.log(lineasConParametros);
         if (lineasConParametros.length == 0) {
             return [];
         }
@@ -25,7 +29,7 @@ export class Parametrizador {
             lineasConParametros = this.filtrarTextosCumplenReglasPriorizadas(lineasConParametros);
         }
         const valoresParametros = this.obtenerValoresParametros(lineasConParametros);
-        return valoresParametros;
+        return this.formatearResultado(valoresParametros);
     }
 
     filtrarTextosCumplenReglasObligatorias(textos: string[]): string[] {
@@ -49,28 +53,33 @@ export class Parametrizador {
 
     obtenerValorReglaParametro(texto: string, regla: ReglasParametro) {
         console.log('-- obtenerValorReglaParametro --');
-        const result = {
+        const result : { nombre: string, valor: string | number } = {
             nombre: regla.nombre,
             valor: ''
         }
         const textoLowerCase = texto.toLocaleLowerCase();
         const resultExec = new RegExp(regla.patronBusqueda).exec(textoLowerCase.toLocaleLowerCase());
-        
-        if (resultExec != null) {
-            const coincidencia = resultExec[0];
-            if (regla.tipoPatronValorObtener == 'BUSQUEDA') {
-                const rgxExecCoincidencia = new RegExp(regla.patronValorObtener).exec(coincidencia);
-                result.valor = rgxExecCoincidencia == null ? '' : rgxExecCoincidencia[0];
-            } else {
-                result.valor = coincidencia.replace(new RegExp(regla.patronValorObtener, 'g'), '').trim();
-            }
+        if (resultExec === null) {
+            result.valor = this.getValorNoEncontradoDefaultParametro(regla.nombre);
+            return result;
+        }
+        const coincidencia = resultExec[0];
+        if (regla.tipoPatronValorObtener == 'BUSQUEDA') {
+            const rgxExecCoincidencia = new RegExp(regla.patronValorObtener).exec(coincidencia);
+            result.valor = rgxExecCoincidencia == null ? '' : rgxExecCoincidencia[0];
+        } else {
+            result.valor = coincidencia.replace(new RegExp(regla.patronValorObtener, 'g'), '').trim();
         }
         if (result.valor != '') {
             result.valor = this.transformarValor(texto, textoLowerCase, result.valor, regla.transformacionValores);
         } else {
-            result.valor = 'NO_' + regla.nombre.toUpperCase()
+            result.valor = this.getValorNoEncontradoDefaultParametro(regla.nombre);
         }
         return result;
+    }
+
+    getValorNoEncontradoDefaultParametro(nombre: string) {
+        return 'NO ' + nombre.toUpperCase();
     }
 
     cumpleReglas(texto: string, reglasObligatorias: ReglasParametro[]) : boolean {
@@ -81,23 +90,60 @@ export class Parametrizador {
 
     cumplePatronBusqueda(texto: string, patronBusqueda: string): boolean {
         console.log('-- cumplePatronBusqueda --');
+        console.log(texto);
+        console.log(patronBusqueda);
         const rgx = new RegExp(patronBusqueda)
         const result = rgx.test(texto.toLocaleLowerCase());
+        console.log(result);
         return result;
     }
 
-    transformarValor(textoOriginal: string, textoLowerCase: string, valor: string, reglaTransformacion: TranformadorValor[] | null): string {
-        if (reglaTransformacion == null) {
-            const idx = textoLowerCase.indexOf(valor);
-            const valorOriginal = textoOriginal.substring(idx, idx + valor.length);
-            return valorOriginal;
-        } else {
-            const findTransform = reglaTransformacion.find((transform: TranformadorValor) => new RegExp(transform.patron).test(valor));
-            if (findTransform !== null && findTransform !== undefined) {
-                return findTransform.valor;
-            }
+    transformarValor(textoOriginal: string, textoLowerCase: string, valor: string, transformadores: TranformadorValor[] | null): string | number {
+        if (transformadores !== null && transformadores.length > 0) {
+            return this.transformarPorReemplazoYTipo(valor, transformadores);
         }
-        return valor;
+        return this.transformarAValorOriginal(textoOriginal, textoLowerCase, valor);
+    }
+
+    transformarAValorOriginal(textoOriginal: string, textoLowerCase: string, valor: string) {
+        const idx = textoLowerCase.indexOf(valor);
+        const valorOriginal = textoOriginal.substring(idx, idx + valor.length);
+        return valorOriginal;
+    }
+
+    transformarPorReemplazoYTipo(valor: string, transformadores: TranformadorValor[]): string | number {
+        let transform: TranformadorValor | undefined = transformadores[0];
+        if (transformadores.length > 1) {
+            transform = transformadores.find((transform: TranformadorValor) => new RegExp(transform.patron).test(valor));
+        }
+        if (transform === undefined) {
+            return valor;
+        }
+        let valorTransformado = valor;
+        if (transform.patron !== '') {
+            valorTransformado = valor.replace(new RegExp(transform.patron, 'g'), transform.valor);
+        }
+        if (transform.tipo === 'NUMBER') {
+            return this.transformarANumber(valorTransformado)
+        }
+        if (transform.tipo === 'STRING' && transform.format !== 'NO_FORMAT') {
+            return transform.format === 'LOWER' ? valorTransformado.toLocaleLowerCase() : valorTransformado.toUpperCase();
+        }
+        return valorTransformado;
+    }
+
+    transformarANumber(valor: string): number {
+        return parseFloat(valor);
+    }
+
+    formatearResultado(valoresParametros: {nombre: string, valor: string | number}[][]): object[] {
+        return valoresParametros.map((item) => {
+            const result: any = {};
+            for (const param of item) {
+                result[param.nombre] = param.valor
+            }
+            return result;
+        });
     }
 
 }

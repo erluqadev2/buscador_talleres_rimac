@@ -1,13 +1,4 @@
-export class TranformadorValor {
-    patron: string = '';
-    valor: string = '';
-
-    constructor(patron: string, valor: string) {
-        this.patron = patron;
-        this.valor = valor;
-    }
-}
-
+import { TranformadorValor } from "./TransformadorValor";
 export class ReglasParametro {
 
     nombre: string = '';
